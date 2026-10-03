@@ -3,7 +3,12 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { nanoid } from 'nanoid';
 import Url from './models/Url.js';
+import { z } from 'zod';
 const app = express();
+
+const urlSchema = z.object({
+    url: z.url({ protocol: /^https?$/ }),
+})
 dotenv.config();
 mongoose.connect(process.env.MONGO_URI).then(() => {
     app.listen(3000, () => {
@@ -14,16 +19,18 @@ mongoose.connect(process.env.MONGO_URI).then(() => {
     console.error('Error connecting to MongoDB:', err);
 });
 app.use(express.json());
+
 app.post("/shorten", async (req, res) => {
     const body = req.body;
 
-    const url = body.url;
-    if (!url) {
-        return res.status(400).send("Url is required");
+    const result = urlSchema.safeParse(body);
+
+    if (result.success === false) {
+        return res.status(400).send(" a validUrl is required");
     }
     const shortCode = nanoid(6);
     const newUrl = new Url({
-        originalUrl: url,
+        originalUrl: result.data.url,
         shortCode: shortCode,
     });
     try {
